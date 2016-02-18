@@ -59,13 +59,14 @@ func (enc *Encoder) encode(v reflect.Value) error {
 		enc.written = true
 		return nil
 	}
-	return nil
 }
 
 func (enc *Encoder) encodeStruct(v reflect.Value) error {
 	t := v.Type()
 	for i := 0; i < v.NumField(); i++ {
-		if t.Field(i).Tag.Get(enc.Tag) == "-" {
+		field := t.Field(i)
+		tag := field.Tag.Get(enc.Tag)
+		if tag == "-" || (tag == "" && field.Type.Kind() != reflect.Struct) {
 			continue
 		}
 		if err := enc.encode(v.Field(i)); err != nil {
