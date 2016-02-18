@@ -7,22 +7,38 @@ import (
 	"reflect"
 )
 
-const (
-	csvTag = "csv"
-	delim  = ','
-)
-
 type Encoder struct {
-	written bool
-	w       io.Writer
+	Delimiter rune
+	Tag       string
+	UseCRLF   bool
+	written   bool
+	w         io.Writer
 }
 
 func NewEncoder(w io.Writer) *Encoder {
-	return &Encoder{w: w}
+	return &Encoder{
+		Delimiter: ',',
+		Tag:       "csv",
+		w:         w,
+	}
 }
 
+func (enc *Encoder) SetDelimeter(delim rune) { enc.Delimiter = delim }
+func (enc *Encoder) SetTag(tag string)       { enc.Tag = tag }
+
 func (enc *Encoder) Encode(v interface{}) error {
-	return enc.encode(reflect.ValueOf(v))
+	if err := enc.encode(reflect.ValueOf(v)); err != nil {
+		return err
+	}
+	if enc.UseCRLF {
+		if _, err := enc.w.Write([]byte{'\r', '\n'}); err != nil {
+			return err
+		}
+	}
+	if _, err := enc.w.Write([]byte{'\n'}); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (enc *Encoder) encode(v reflect.Value) error {
@@ -31,7 +47,7 @@ func (enc *Encoder) encode(v reflect.Value) error {
 		return enc.encodeStruct(v)
 	default:
 		if enc.written {
-			_, err := enc.w.Write([]byte{delim})
+			_, err := enc.w.Write([]byte(string(enc.Delimiter)))
 			if err != nil {
 				return err
 			}
@@ -49,7 +65,7 @@ func (enc *Encoder) encode(v reflect.Value) error {
 func (enc *Encoder) encodeStruct(v reflect.Value) error {
 	t := v.Type()
 	for i := 0; i < v.NumField(); i++ {
-		if t.Field(i).Tag.Get(csvTag) == "-" {
+		if t.Field(i).Tag.Get(enc.Tag) == "-" {
 			continue
 		}
 		if err := enc.encode(v.Field(i)); err != nil {

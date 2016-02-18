@@ -32,7 +32,7 @@ func TestMarshal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expected := "a,b,1"
+	expected := "a,b,1\n"
 	actual := string(buf)
 	if actual != expected {
 		t.Fatalf("expected %s, got %s", expected, actual)
