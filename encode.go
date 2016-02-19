@@ -5,6 +5,11 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"time"
+)
+
+const (
+	sqlTime = "2006-01-02 15:04:05.000"
 )
 
 type Encoder struct {
@@ -41,6 +46,9 @@ func (enc *Encoder) Encode(v interface{}) error {
 func (enc *Encoder) encode(v reflect.Value) error {
 	switch v.Kind() {
 	case reflect.Struct:
+		if t, ok := v.Interface().(time.Time); ok {
+			return enc.write([]byte(t.Format(sqlTime)))
+		}
 		return enc.encodeStruct(v)
 	case reflect.Slice:
 		return nil
@@ -49,19 +57,23 @@ func (enc *Encoder) encode(v reflect.Value) error {
 			return enc.encode(v.Elem())
 		}
 	default:
-		if enc.written {
-			_, err := enc.w.Write([]byte(string(enc.Delimiter)))
-			if err != nil {
-				return err
-			}
-		}
-		_, err := fmt.Fprint(enc.w, v.Interface())
+		return enc.write([]byte(fmt.Sprint(v.Interface())))
+	}
+	return nil
+}
+
+func (enc *Encoder) write(bs []byte) error {
+	if enc.written {
+		_, err := enc.w.Write([]byte(string(enc.Delimiter)))
 		if err != nil {
 			return err
 		}
-		enc.written = true
-		return nil
 	}
+	_, err := enc.w.Write(bs)
+	if err != nil {
+		return err
+	}
+	enc.written = true
 	return nil
 }
 
