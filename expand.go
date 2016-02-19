@@ -2,83 +2,143 @@ package csv
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"reflect"
+	"strings"
 )
 
-func expand(w io.Writer, v reflect.Value, path [][]string) error {
-	fields, err := unmarshal(v, ',', "csv2")
+type Expander struct {
+	Delimiter rune
+	Tag       string
+	LineBreak string
+	w         io.Writer
+}
+
+func NewExpander(w io.Writer) *Expander {
+	return &Expander{
+		Delimiter: ',',
+		Tag:       "csv",
+		LineBreak: "\n",
+		w:         w,
+	}
+}
+
+func (e *Expander) SetDelimeter(delim rune) *Expander       { e.Delimiter = delim; return e }
+func (e *Expander) SetTag(tag string) *Expander             { e.Tag = tag; return e }
+func (e *Expander) SetLineBreak(lineBreak string) *Expander { e.LineBreak = lineBreak; return e }
+
+func (e *Expander) Expand(value interface{}, path ...string) error {
+	ps := make([][]string, len(path))
+	for i := range ps {
+		ps[i] = strings.Split(path[i], ".")
+	}
+	v := reflect.ValueOf(value)
+	fields, err := e.marshal(v)
 	if err != nil {
 		return err
 	}
-	its := []*iter{newIter(v, path, 0, fields)}
+	slice, err := getSlice(v, ps[0])
+	if err != nil {
+		return err
+	}
+	its := its{{
+		slice:  slice,
+		prefix: fields,
+	}}
 	for {
-		it := its[len(its)-1]
-		v = it.New()
-		if !it.Next(v) {
-			its = its[:len(its)-1]
+		it := its.top()
+		v, ok := it.next()
+		if !ok {
+			its.pop()
 			break
 		}
-		fields, err := unmarshal(v, ',', "csv2")
+		fields, err := e.marshal(v)
 		if err != nil {
 			return err
 		}
-		if it.level+1 < len(path) {
-			its = append(its, newIter(v, path, it.level+1, fields))
-		} else {
-			bufs := make([][]byte, len(its)+1)
-			for i := range its {
-				bufs[i] = its[i].prefix
-			}
-			bufs[len(bufs)-1] = fields
-			if _, err := w.Write(append(bytes.Join(bufs, []byte{','}), '\n')); err != nil {
+		if it.level+1 < len(ps) {
+			slice, err := getSlice(v, ps[it.level+1])
+			if err != nil {
 				return err
 			}
+			its.push(&iter{
+				slice:  slice,
+				level:  it.level + 1,
+				prefix: fields,
+			})
+			continue
+		}
+		if _, err := e.w.Write(bytes.Join(append(its.prefixes(), fields), []byte(string(e.Delimiter)))); err != nil {
+			return err
+		}
+		if _, err := e.w.Write([]byte(e.LineBreak)); err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
+func (e *Expander) marshal(v reflect.Value) ([]byte, error) {
+	w := new(bytes.Buffer)
+	enc := Encoder{w: w, Delimiter: e.Delimiter, Tag: e.Tag}
+	if err := enc.encode(v); err != nil {
+		return nil, err
+	}
+	return w.Bytes(), nil
+}
+
+type its []*iter
+
+func (s *its) top() *iter {
+	return (*s)[len(*s)-1]
+}
+
+func (s *its) push(it *iter) {
+	*s = append(*s, it)
+}
+
+func (s *its) pop() (res *iter) {
+	*s, res = (*s)[:len(*s)-1], (*s)[len(*s)-1]
+	return
+}
+
+func (s *its) prefixes() [][]byte {
+	bufs := make([][]byte, len(*s))
+	for i := range *s {
+		bufs[i] = (*s)[i].prefix
+	}
+	return bufs
+}
+
 type iter struct {
-	a      reflect.Value
+	slice  reflect.Value
 	i      int
 	level  int
 	prefix []byte
 }
 
-func newIter(v reflect.Value, path [][]string, level int, prefix []byte) *iter {
-	return &iter{
-		a:      findFieldByPath(v, path[level]),
-		level:  level,
-		prefix: prefix,
+func (it *iter) next() (reflect.Value, bool) {
+	v := reflect.New(it.slice.Type().Elem()).Elem()
+	if it.i >= it.slice.Len() {
+		return reflect.Value{}, false
 	}
-}
-
-func (it *iter) New() reflect.Value {
-	return reflect.New(it.a.Type().Elem()).Elem()
-}
-
-func (it *iter) Next(v reflect.Value) bool {
-	if it.i >= it.a.Len() {
-		return false
-	}
-	v.Set(it.a.Index(it.i))
+	v.Set(it.slice.Index(it.i))
 	it.i++
-	return it.i <= it.a.Len()
+	return v, it.i <= it.slice.Len()
 }
 
-func findFieldByPath(v reflect.Value, path []string) reflect.Value {
+func getSlice(v reflect.Value, path []string) (reflect.Value, error) {
 	for _, name := range path {
+		if v.Kind() != reflect.Struct {
+			return reflect.Value{}, fmt.Errorf("expect struct type in path %v", path)
+		}
 		v = v.FieldByName(name)
 	}
-	return v
-}
-
-func unmarshal(v reflect.Value, delimiter rune, tag string) ([]byte, error) {
-	w := new(bytes.Buffer)
-	enc := Encoder{w: w, Delimiter: ',', Tag: "csv2"}
-	if err := enc.encode(v); err != nil {
-		return nil, err
+	switch v.Kind() {
+	case reflect.Slice, reflect.Array:
+	default:
+		return reflect.Value{}, fmt.Errorf("expect slice or array type for path %v", path)
 	}
-	return w.Bytes(), nil
+	return v, nil
 }

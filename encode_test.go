@@ -2,7 +2,6 @@ package csv
 
 import (
 	"bytes"
-	"reflect"
 	"testing"
 	"time"
 )
@@ -65,9 +64,9 @@ func TestMarshalSlice(t *testing.T) {
 		V4: "c",
 	}
 
-	path := [][]string{[]string{"Level1", "Level2"}, []string{"Leaf"}}
 	w := new(bytes.Buffer)
-	if err := expand(w, reflect.ValueOf(st), path); err != nil {
+	expander := NewExpander(w).SetTag("csv2")
+	if err := expander.Expand(st, "Level1.Level2", "Leaf"); err != nil {
 		t.Fatal(err)
 	}
 	actual := w.String()
