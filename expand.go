@@ -34,11 +34,15 @@ func (e *Expander) Expand(value interface{}, path ...string) error {
 		ps[i] = strings.Split(path[i], ".")
 	}
 	v := reflect.ValueOf(value)
+	return e.expand(v, ps)
+}
+
+func (e *Expander) expand(v reflect.Value, path [][]string) error {
 	fields, err := e.marshal(v)
 	if err != nil {
 		return err
 	}
-	slice, err := getSlice(v, ps[0])
+	slice, err := getSlice(v, path[0])
 	if err != nil {
 		return err
 	}
@@ -57,8 +61,8 @@ func (e *Expander) Expand(value interface{}, path ...string) error {
 		if err != nil {
 			return err
 		}
-		if it.level+1 < len(ps) {
-			slice, err := getSlice(v, ps[it.level+1])
+		if it.level+1 < len(path) {
+			slice, err := getSlice(v, path[it.level+1])
 			if err != nil {
 				return err
 			}
