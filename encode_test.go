@@ -99,12 +99,14 @@ func TestMarshalSlice(t *testing.T) {
 	}
 
 	path := [][]string{[]string{"Level1", "Level2"}, []string{"Leaf"}}
+
 	w := new(bytes.Buffer)
 	enc := Encoder{w: w, Delimiter: ',', Tag: "csv2"}
 	if err := enc.Encode(v); err != nil {
 		t.Fatal(err)
 	}
 	prefix1 := w.Bytes()
+
 	actual := ""
 	it := newIter(reflect.ValueOf(v), path, 0)
 	level2 := it.New()
@@ -115,6 +117,7 @@ func TestMarshalSlice(t *testing.T) {
 			t.Fatal(err)
 		}
 		prefix2 := w.Bytes()
+
 		it2 := newIter(level2, path, it.level+1)
 		leaf := it2.New()
 		for it2.Next(leaf) {
