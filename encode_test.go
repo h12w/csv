@@ -2,6 +2,7 @@ package csv
 
 import (
 	"bytes"
+	"io"
 	"reflect"
 	"testing"
 	"time"
@@ -41,8 +42,8 @@ type iter struct {
 	level int
 }
 
-func newIter(v reflect.Value, path [][]string, level int) iter {
-	return iter{
+func newIter(v reflect.Value, path [][]string, level int) *iter {
+	return &iter{
 		a:     findFieldByPath(v, path[level]),
 		level: level,
 	}
@@ -68,6 +69,15 @@ func findFieldByPath(v reflect.Value, path []string) reflect.Value {
 	return v
 }
 
+func unmarshal(v reflect.Value, delimiter rune, tag string) ([]byte, error) {
+	w := new(bytes.Buffer)
+	enc := Encoder{w: w, Delimiter: ',', Tag: "csv2"}
+	if err := enc.encode(v); err != nil {
+		return nil, err
+	}
+	return w.Bytes(), nil
+}
+
 func TestMarshalSlice(t *testing.T) {
 	type (
 		Leaf struct {
@@ -89,7 +99,7 @@ func TestMarshalSlice(t *testing.T) {
 			V4     string `csv:"v4"`
 		}
 	)
-	v := Struct{
+	st := Struct{
 		V1: "a",
 		Level1: Level1{[]Level2{
 			{1, []Leaf{{3, 4}, {5, 6}}, 2},
@@ -99,41 +109,64 @@ func TestMarshalSlice(t *testing.T) {
 	}
 
 	path := [][]string{[]string{"Level1", "Level2"}, []string{"Leaf"}}
-
 	w := new(bytes.Buffer)
-	enc := Encoder{w: w, Delimiter: ',', Tag: "csv2"}
-	if err := enc.Encode(v); err != nil {
+	if err := expand(w, reflect.ValueOf(st), path); err != nil {
 		t.Fatal(err)
 	}
-	prefix1 := w.Bytes()
-
-	actual := ""
-	it := newIter(reflect.ValueOf(v), path, 0)
-	level2 := it.New()
-	for it.Next(level2) {
-		w := new(bytes.Buffer)
-		enc := Encoder{w: w, Delimiter: ',', Tag: "csv2"}
-		if err := enc.encode(level2); err != nil {
-			t.Fatal(err)
-		}
-		prefix2 := w.Bytes()
-
-		it2 := newIter(level2, path, it.level+1)
-		leaf := it2.New()
-		for it2.Next(leaf) {
-			w := new(bytes.Buffer)
-			enc := Encoder{w: w, Delimiter: ',', Tag: "csv2"}
-			if err := enc.encode(leaf); err != nil {
-				t.Fatal(err)
-			}
-			actual += string(bytes.Join([][]byte{prefix1, prefix2, w.Bytes()}, []byte{','})) + "\n"
-		}
-	}
+	actual := w.String()
 
 	expected := "a,b,1,2,3,4\na,b,1,2,5,6\n"
 	if actual != expected {
 		t.Fatalf("expected %s, got %s", expected, actual)
 	}
+
+}
+
+func expand(w io.Writer, v reflect.Value, path [][]string) error {
+	var buf [][]byte
+
+	fields, err := unmarshal(v, ',', "csv2")
+	if err != nil {
+		return err
+	}
+	buf = append(buf, fields)
+	its := []*iter{newIter(v, path, 0)}
+	for {
+		it := its[len(its)-1]
+		v = it.New()
+		if !it.Next(v) {
+			break
+		}
+		fields, err := unmarshal(v, ',', "csv2")
+		if err != nil {
+			return err
+		}
+		buf = append(buf, fields)
+		its = append(its, newIter(v, path, it.level+1))
+		for {
+			it := its[len(its)-1]
+			v := it.New()
+			if !it.Next(v) {
+				break
+			}
+			fields, err := unmarshal(v, ',', "csv2")
+			if err != nil {
+				return err
+			}
+			buf = append(buf, fields)
+			if it.level+1 == len(path) {
+				if _, err := w.Write(append(bytes.Join(buf, []byte{','}), '\n')); err != nil {
+					return err
+				}
+			}
+			buf = buf[:len(buf)-1]
+		}
+		buf = buf[:len(buf)-1]
+		its = its[:len(its)-1]
+	}
+	buf = buf[:len(buf)-1]
+	its = its[:len(its)-1]
+	return nil
 }
 
 type Types struct {
