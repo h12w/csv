@@ -11,13 +11,11 @@ func expand(w io.Writer, v reflect.Value, path [][]string) error {
 	if err != nil {
 		return err
 	}
-	its := []*iter{newIter(v, path, 0)}
-	buf := [][]byte{fields}
+	its := []*iter{newIter(v, path, 0, fields)}
 	for {
 		it := its[len(its)-1]
 		v = it.New()
 		if !it.Next(v) {
-			buf = buf[:len(buf)-1]
 			its = its[:len(its)-1]
 			break
 		}
@@ -26,29 +24,33 @@ func expand(w io.Writer, v reflect.Value, path [][]string) error {
 			return err
 		}
 		if it.level+1 < len(path) {
-			its = append(its, newIter(v, path, it.level+1))
-			buf = append(buf, fields)
+			its = append(its, newIter(v, path, it.level+1, fields))
 		} else {
-			buf = append(buf, fields)
-			if _, err := w.Write(append(bytes.Join(buf, []byte{','}), '\n')); err != nil {
+			bufs := make([][]byte, len(its)+1)
+			for i := range its {
+				bufs[i] = its[i].prefix
+			}
+			bufs[len(bufs)-1] = fields
+			if _, err := w.Write(append(bytes.Join(bufs, []byte{','}), '\n')); err != nil {
 				return err
 			}
-			buf = buf[:len(buf)-1]
 		}
 	}
 	return nil
 }
 
 type iter struct {
-	a     reflect.Value
-	i     int
-	level int
+	a      reflect.Value
+	i      int
+	level  int
+	prefix []byte
 }
 
-func newIter(v reflect.Value, path [][]string, level int) *iter {
+func newIter(v reflect.Value, path [][]string, level int, prefix []byte) *iter {
 	return &iter{
-		a:     findFieldByPath(v, path[level]),
-		level: level,
+		a:      findFieldByPath(v, path[level]),
+		level:  level,
+		prefix: prefix,
 	}
 }
 
