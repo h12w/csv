@@ -44,6 +44,10 @@ func (enc *Encoder) encode(v reflect.Value) error {
 		return enc.encodeStruct(v)
 	case reflect.Slice:
 		return nil
+	case reflect.Ptr:
+		if !v.IsNil() {
+			return enc.encode(v.Elem())
+		}
 	default:
 		if enc.written {
 			_, err := enc.w.Write([]byte(string(enc.Delimiter)))
@@ -58,6 +62,7 @@ func (enc *Encoder) encode(v reflect.Value) error {
 		enc.written = true
 		return nil
 	}
+	return nil
 }
 
 func (enc *Encoder) encodeStruct(v reflect.Value) error {
