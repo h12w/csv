@@ -10,7 +10,7 @@ import (
 type Encoder struct {
 	Delimiter rune
 	Tag       string
-	UseCRLF   bool
+	LineBreak string
 	written   bool
 	w         io.Writer
 }
@@ -19,23 +19,20 @@ func NewEncoder(w io.Writer) *Encoder {
 	return &Encoder{
 		Delimiter: ',',
 		Tag:       "csv",
+		LineBreak: "\n",
 		w:         w,
 	}
 }
 
-func (enc *Encoder) SetDelimeter(delim rune) { enc.Delimiter = delim }
-func (enc *Encoder) SetTag(tag string)       { enc.Tag = tag }
+func (enc *Encoder) SetDelimeter(delim rune) *Encoder       { enc.Delimiter = delim; return enc }
+func (enc *Encoder) SetTag(tag string) *Encoder             { enc.Tag = tag; return enc }
+func (enc *Encoder) SetLineBreak(lineBreak string) *Encoder { enc.LineBreak = lineBreak; return enc }
 
 func (enc *Encoder) Encode(v interface{}) error {
 	if err := enc.encode(reflect.ValueOf(v)); err != nil {
 		return err
 	}
-	if enc.UseCRLF {
-		if _, err := enc.w.Write([]byte{'\r', '\n'}); err != nil {
-			return err
-		}
-	}
-	if _, err := enc.w.Write([]byte{'\n'}); err != nil {
+	if _, err := enc.w.Write([]byte(enc.LineBreak)); err != nil {
 		return err
 	}
 	return nil
@@ -45,6 +42,8 @@ func (enc *Encoder) encode(v reflect.Value) error {
 	switch v.Kind() {
 	case reflect.Struct:
 		return enc.encodeStruct(v)
+	case reflect.Slice:
+		return nil
 	default:
 		if enc.written {
 			_, err := enc.w.Write([]byte(string(enc.Delimiter)))
