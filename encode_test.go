@@ -124,48 +124,35 @@ func TestMarshalSlice(t *testing.T) {
 
 func expand(w io.Writer, v reflect.Value, path [][]string) error {
 	var buf [][]byte
-
 	fields, err := unmarshal(v, ',', "csv2")
 	if err != nil {
 		return err
 	}
-	buf = append(buf, fields)
 	its := []*iter{newIter(v, path, 0)}
+	buf = append(buf, fields)
 	for {
 		it := its[len(its)-1]
 		v = it.New()
 		if !it.Next(v) {
+			buf = buf[:len(buf)-1]
+			its = its[:len(its)-1]
 			break
 		}
 		fields, err := unmarshal(v, ',', "csv2")
 		if err != nil {
 			return err
 		}
-		buf = append(buf, fields)
-		its = append(its, newIter(v, path, it.level+1))
-		for {
-			it := its[len(its)-1]
-			v := it.New()
-			if !it.Next(v) {
-				break
-			}
-			fields, err := unmarshal(v, ',', "csv2")
-			if err != nil {
-				return err
-			}
+		if it.level+1 < len(path) {
+			its = append(its, newIter(v, path, it.level+1))
 			buf = append(buf, fields)
-			if it.level+1 == len(path) {
-				if _, err := w.Write(append(bytes.Join(buf, []byte{','}), '\n')); err != nil {
-					return err
-				}
+		} else {
+			buf = append(buf, fields)
+			if _, err := w.Write(append(bytes.Join(buf, []byte{','}), '\n')); err != nil {
+				return err
 			}
 			buf = buf[:len(buf)-1]
 		}
-		buf = buf[:len(buf)-1]
-		its = its[:len(its)-1]
 	}
-	buf = buf[:len(buf)-1]
-	its = its[:len(its)-1]
 	return nil
 }
 
