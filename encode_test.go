@@ -123,13 +123,12 @@ func TestMarshalSlice(t *testing.T) {
 }
 
 func expand(w io.Writer, v reflect.Value, path [][]string) error {
-	var buf [][]byte
 	fields, err := unmarshal(v, ',', "csv2")
 	if err != nil {
 		return err
 	}
 	its := []*iter{newIter(v, path, 0)}
-	buf = append(buf, fields)
+	buf := [][]byte{fields}
 	for {
 		it := its[len(its)-1]
 		v = it.New()
