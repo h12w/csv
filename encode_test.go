@@ -1,7 +1,6 @@
 package csv
 
 import (
-	"bytes"
 	"testing"
 	"time"
 )
@@ -34,53 +33,20 @@ func TestMarshalNested(t *testing.T) {
 	}
 }
 
-func TestMarshalSlice(t *testing.T) {
-	type (
-		Leaf struct {
-			V1 int `csv2:"v1"`
-			V2 int `csv2:"v2"`
-		}
-		Level2 struct {
-			V3   int `csv2:"v3"`
-			Leaf []Leaf
-			V4   int `csv2:"v4"`
-		}
-		Level1 struct {
-			Level2 []Level2
-		}
-		Struct struct {
-			V1     string `csv:"v1" csv2:"v1"`
-			Level1 Level1 `csv:"-"`
-			V3     string `csv:"v3" csv2:"v3"`
-			V4     string `csv:"v4"`
-		}
-	)
-	st := Struct{
-		V1: "a",
-		Level1: Level1{[]Level2{
-			{1, []Leaf{{3, 4}, {5, 6}}, 2},
-		}},
-		V3: "b",
-		V4: "c",
+func TestMarshalNoTime(t *testing.T) {
+	type S struct {
+		I int `csv:"i"`
+		T time.Time
 	}
-
-	w := new(bytes.Buffer)
-	expander := NewExpander(w).SetTag("csv2")
-	if err := expander.Expand(st, "Level1.Level2", "Leaf"); err != nil {
+	var v S
+	v.I = 1
+	buf, err := Marshal(v)
+	if err != nil {
 		t.Fatal(err)
 	}
-	actual := w.String()
-
-	expected := "a,b,1,2,3,4\na,b,1,2,5,6\n"
+	expected := "1\n"
+	actual := string(buf)
 	if actual != expected {
 		t.Fatalf("expected %s, got %s", expected, actual)
 	}
-
-}
-
-type Types struct {
-	V1 string    `csv:"v1"`
-	V2 int       `csv:"v2"`
-	V3 float64   `csv:"v3"`
-	V4 time.Time `csv:"v4"`
 }

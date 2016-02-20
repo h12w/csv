@@ -2,10 +2,16 @@ package csv
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
 	"strings"
+	"time"
+)
+
+var (
+	ErrPathEmpty = errors.New("path should not be empty")
 )
 
 type Expander struct {
@@ -29,6 +35,9 @@ func (e *Expander) SetTag(tag string) *Expander             { e.Tag = tag; retur
 func (e *Expander) SetLineBreak(lineBreak string) *Expander { e.LineBreak = lineBreak; return e }
 
 func (e *Expander) Expand(value interface{}, path ...string) error {
+	if len(path) == 0 {
+		return ErrPathEmpty
+	}
 	ps := make([][]string, len(path))
 	for i := range ps {
 		ps[i] = strings.Split(path[i], ".")
@@ -134,15 +143,25 @@ func (it *iter) next() (reflect.Value, bool) {
 
 func getSlice(v reflect.Value, path []string) (reflect.Value, error) {
 	for _, name := range path {
+		if v.Kind() == reflect.Ptr && !v.IsNil() {
+			v = v.Elem()
+		}
 		if v.Kind() != reflect.Struct {
-			return reflect.Value{}, fmt.Errorf("expect struct type in path %v", path)
+			return reflect.Value{}, fmt.Errorf("expect struct type but got %v in path %v", v.Kind(), path)
 		}
 		v = v.FieldByName(name)
 	}
 	switch v.Kind() {
 	case reflect.Slice, reflect.Array:
 	default:
-		return reflect.Value{}, fmt.Errorf("expect slice or array type for path %v", path)
+		return reflect.Value{}, fmt.Errorf("expect slice or array type but got %v for path %v", v.Kind(), path)
 	}
 	return v, nil
+}
+
+type Types struct {
+	V1 string    `csv:"v1"`
+	V2 int       `csv:"v2"`
+	V3 float64   `csv:"v3"`
+	V4 time.Time `csv:"v4"`
 }

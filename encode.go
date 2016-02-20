@@ -81,8 +81,11 @@ func (enc *Encoder) encodeStruct(v reflect.Value) error {
 	t := v.Type()
 	for i := 0; i < v.NumField(); i++ {
 		field := t.Field(i)
-		tag := field.Tag.Get(enc.Tag)
-		if tag == "-" || (tag == "" && field.Type.Kind() != reflect.Struct) {
+		tag := structTag(field.Tag)
+		if !tag.Has(enc.Tag) && (field.Type.Kind() != reflect.Struct || field.Type == reflect.TypeOf(time.Time{})) {
+			continue
+		}
+		if tag.Get(enc.Tag) == "-" {
 			continue
 		}
 		if err := enc.encode(v.Field(i)); err != nil {
