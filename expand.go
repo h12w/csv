@@ -96,8 +96,8 @@ func (e *Encoder) marshal(v reflect.Value) ([]byte, error) {
 		return nil, err
 	}
 	if !e.written { // only accumulate names for the first record
-		e.tags = append(e.tags, enc.Tags()...)
-		e.names = append(e.names, enc.Names()...)
+		e.tags = append(e.tags, enc.tags...)
+		e.names = append(e.names, enc.names...)
 	}
 	return w.Bytes(), nil
 }

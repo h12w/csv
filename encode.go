@@ -23,22 +23,6 @@ type basicEncoder struct {
 	tagStack  Tags
 }
 
-func NewBasicEncoder(w io.Writer) *basicEncoder {
-	return &basicEncoder{
-		Delimiter: ',',
-		TagKey:    "csv",
-		LineBreak: "\n",
-		w:         w,
-	}
-}
-
-func (enc *basicEncoder) SetDelimeter(delim rune) *basicEncoder { enc.Delimiter = delim; return enc }
-func (enc *basicEncoder) SetTagKey(tagKey string) *basicEncoder { enc.TagKey = tagKey; return enc }
-func (enc *basicEncoder) SetLineBreak(lineBreak string) *basicEncoder {
-	enc.LineBreak = lineBreak
-	return enc
-}
-
 func (enc *basicEncoder) encodeLine(v interface{}) error {
 	if err := enc.encodeValue(reflect.ValueOf(v)); err != nil {
 		return err
@@ -48,9 +32,6 @@ func (enc *basicEncoder) encodeLine(v interface{}) error {
 	}
 	return nil
 }
-
-func (enc *basicEncoder) Tags() []Tag     { return enc.tags }
-func (enc *basicEncoder) Names() []string { return enc.names }
 
 func (enc *basicEncoder) encodeValue(v reflect.Value) error {
 	switch v.Kind() {
