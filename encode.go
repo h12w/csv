@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -18,6 +19,8 @@ type Encoder struct {
 	LineBreak string
 	written   bool
 	w         io.Writer
+	nameStack []string
+	names     []string
 }
 
 func NewEncoder(w io.Writer) *Encoder {
@@ -41,6 +44,10 @@ func (enc *Encoder) Encode(v interface{}) error {
 		return err
 	}
 	return nil
+}
+
+func (enc *Encoder) Names() []string {
+	return enc.names
 }
 
 func (enc *Encoder) encode(v reflect.Value) error {
@@ -69,6 +76,7 @@ func (enc *Encoder) write(bs []byte) error {
 			return err
 		}
 	}
+	enc.names = append(enc.names, strings.Join(enc.nameStack, ""))
 	_, err := enc.w.Write(bs)
 	if err != nil {
 		return err
@@ -82,15 +90,18 @@ func (enc *Encoder) encodeStruct(v reflect.Value) error {
 	for i := 0; i < v.NumField(); i++ {
 		field := t.Field(i)
 		tag := structTag(field.Tag)
+		name := tag.Get(enc.Tag)
 		if !tag.Has(enc.Tag) && (field.Type.Kind() != reflect.Struct || field.Type == reflect.TypeOf(time.Time{})) {
 			continue
 		}
 		if tag.Get(enc.Tag) == "-" {
 			continue
 		}
+		enc.nameStack = append(enc.nameStack, name)
 		if err := enc.encode(v.Field(i)); err != nil {
 			return err
 		}
+		enc.nameStack = enc.nameStack[:len(enc.nameStack)-1]
 	}
 	return nil
 }

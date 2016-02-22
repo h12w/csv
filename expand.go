@@ -19,6 +19,8 @@ type Expander struct {
 	Tag       string
 	LineBreak string
 	w         io.Writer
+	names     []string
+	written   bool
 }
 
 func NewExpander(w io.Writer) *Expander {
@@ -44,6 +46,10 @@ func (e *Expander) Expand(value interface{}, path ...string) error {
 	}
 	v := reflect.ValueOf(value)
 	return e.expand(v, ps)
+}
+
+func (e *Expander) Names() []string {
+	return e.names
 }
 
 func (e *Expander) expand(v reflect.Value, path [][]string) error {
@@ -85,6 +91,7 @@ func (e *Expander) expand(v reflect.Value, path [][]string) error {
 		if _, err := e.w.Write(bytes.Join(append(its.prefixes(), fields), []byte(string(e.Delimiter)))); err != nil {
 			return err
 		}
+		e.written = true
 		if _, err := e.w.Write([]byte(e.LineBreak)); err != nil {
 			return err
 		}
@@ -97,6 +104,9 @@ func (e *Expander) marshal(v reflect.Value) ([]byte, error) {
 	enc := Encoder{w: w, Delimiter: e.Delimiter, Tag: e.Tag}
 	if err := enc.encode(v); err != nil {
 		return nil, err
+	}
+	if !e.written { // only accumulate names for the first record
+		e.names = append(e.names, enc.Names()...)
 	}
 	return w.Bytes(), nil
 }
