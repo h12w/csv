@@ -10,44 +10,48 @@ import (
 
 type Encoder struct {
 	basicEncoder
+	path [][]string
 }
 
 func NewEncoder(w io.Writer) *Encoder {
 	return &Encoder{
 		basicEncoder: basicEncoder{
-			Delimiter: ',',
-			TagKey:    "csv",
-			LineBreak: "\n",
+			delimiter: ',',
+			tagKey:    "csv",
+			lineBreak: "\n",
 			w:         w,
 		},
 	}
 }
 
-func (e *Encoder) SetDelimeter(delim rune) *Encoder       { e.Delimiter = delim; return e }
-func (e *Encoder) SetTagKey(tagKey string) *Encoder       { e.TagKey = tagKey; return e }
-func (e *Encoder) SetLineBreak(lineBreak string) *Encoder { e.LineBreak = lineBreak; return e }
+func (e *Encoder) SetDelimeter(delim rune) *Encoder       { e.delimiter = delim; return e }
+func (e *Encoder) SetTagKey(tagKey string) *Encoder       { e.tagKey = tagKey; return e }
+func (e *Encoder) SetLineBreak(lineBreak string) *Encoder { e.lineBreak = lineBreak; return e }
+func (e *Encoder) SetExpandPath(path ...string) *Encoder {
+	e.path = make([][]string, len(path))
+	for i := range path {
+		e.path[i] = strings.Split(path[i], ".")
+	}
+	return e
+}
 
-func (e *Encoder) Encode(value interface{}, path ...string) error {
-	if len(path) == 0 {
+func (e *Encoder) Encode(value interface{}) error {
+	if len(e.path) == 0 {
 		return e.basicEncoder.encodeLine(value)
 	}
-	ps := make([][]string, len(path))
-	for i := range ps {
-		ps[i] = strings.Split(path[i], ".")
-	}
 	v := reflect.ValueOf(value)
-	return e.expand(v, ps)
+	return e.expand(v)
 }
 
 func (e *Encoder) Tags() []Tag     { return e.tags }
 func (e *Encoder) Names() []string { return e.names }
 
-func (e *Encoder) expand(v reflect.Value, path [][]string) error {
+func (e *Encoder) expand(v reflect.Value) error {
 	fields, err := e.marshal(v)
 	if err != nil {
 		return err
 	}
-	slice, err := getSlice(v, path[0])
+	slice, err := getSlice(v, e.path[0])
 	if err != nil {
 		return err
 	}
@@ -66,8 +70,8 @@ func (e *Encoder) expand(v reflect.Value, path [][]string) error {
 		if err != nil {
 			return err
 		}
-		if it.level+1 < len(path) {
-			slice, err := getSlice(v, path[it.level+1])
+		if it.level+1 < len(e.path) {
+			slice, err := getSlice(v, e.path[it.level+1])
 			if err != nil {
 				return err
 			}
@@ -78,11 +82,11 @@ func (e *Encoder) expand(v reflect.Value, path [][]string) error {
 			})
 			continue
 		}
-		if _, err := e.w.Write(bytes.Join(append(its.prefixes(), fields), []byte(string(e.Delimiter)))); err != nil {
+		if _, err := e.w.Write(bytes.Join(append(its.prefixes(), fields), []byte(string(e.delimiter)))); err != nil {
 			return err
 		}
 		e.written = true
-		if _, err := e.w.Write([]byte(e.LineBreak)); err != nil {
+		if _, err := e.w.Write([]byte(e.lineBreak)); err != nil {
 			return err
 		}
 	}
@@ -91,7 +95,7 @@ func (e *Encoder) expand(v reflect.Value, path [][]string) error {
 
 func (e *Encoder) marshal(v reflect.Value) ([]byte, error) {
 	w := new(bytes.Buffer)
-	enc := basicEncoder{w: w, Delimiter: e.Delimiter, TagKey: e.TagKey}
+	enc := basicEncoder{w: w, delimiter: e.delimiter, tagKey: e.tagKey}
 	if err := enc.encodeValue(v); err != nil {
 		return nil, err
 	}

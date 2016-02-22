@@ -13,9 +13,9 @@ const (
 )
 
 type basicEncoder struct {
-	Delimiter rune
-	TagKey    string
-	LineBreak string
+	delimiter rune
+	tagKey    string
+	lineBreak string
 	written   bool
 	w         io.Writer
 	tags      []Tag
@@ -27,7 +27,7 @@ func (enc *basicEncoder) encodeLine(v interface{}) error {
 	if err := enc.encodeValue(reflect.ValueOf(v)); err != nil {
 		return err
 	}
-	if _, err := enc.w.Write([]byte(enc.LineBreak)); err != nil {
+	if _, err := enc.w.Write([]byte(enc.lineBreak)); err != nil {
 		return err
 	}
 	return nil
@@ -54,13 +54,13 @@ func (enc *basicEncoder) encodeValue(v reflect.Value) error {
 
 func (enc *basicEncoder) write(bs []byte) error {
 	if enc.written {
-		_, err := enc.w.Write([]byte(string(enc.Delimiter)))
+		_, err := enc.w.Write([]byte(string(enc.delimiter)))
 		if err != nil {
 			return err
 		}
 	}
 	enc.tags = append(enc.tags, enc.tagStack.top())
-	enc.names = append(enc.names, enc.tagStack.join(enc.TagKey))
+	enc.names = append(enc.names, enc.tagStack.join(enc.tagKey))
 	_, err := enc.w.Write(bs)
 	if err != nil {
 		return err
@@ -74,10 +74,10 @@ func (enc *basicEncoder) encodeStruct(v reflect.Value) error {
 	for i := 0; i < v.NumField(); i++ {
 		field := t.Field(i)
 		tag := Tag(field.Tag)
-		if !tag.Has(enc.TagKey) && (field.Type.Kind() != reflect.Struct || field.Type == reflect.TypeOf(time.Time{})) {
+		if !tag.Has(enc.tagKey) && (field.Type.Kind() != reflect.Struct || field.Type == reflect.TypeOf(time.Time{})) {
 			continue
 		}
-		if tag.Get(enc.TagKey) == "-" {
+		if tag.Get(enc.tagKey) == "-" {
 			continue
 		}
 		enc.tagStack.push(tag)
