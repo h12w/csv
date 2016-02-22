@@ -36,7 +36,7 @@ func TestMarshalSlice(t *testing.T) {
 	}
 
 	w := new(bytes.Buffer)
-	expander := NewExpander(w).SetTag("csv2")
+	expander := NewExpander(w).SetTagKey("csv2")
 	if err := expander.Expand(st, "Level1.Level2", "Leaf"); err != nil {
 		t.Fatal(err)
 	}

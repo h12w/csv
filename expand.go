@@ -7,7 +7,6 @@ import (
 	"io"
 	"reflect"
 	"strings"
-	"time"
 )
 
 var (
@@ -16,9 +15,10 @@ var (
 
 type Expander struct {
 	Delimiter rune
-	Tag       string
+	TagKey    string
 	LineBreak string
 	w         io.Writer
+	tags      []Tag
 	names     []string
 	written   bool
 }
@@ -26,14 +26,14 @@ type Expander struct {
 func NewExpander(w io.Writer) *Expander {
 	return &Expander{
 		Delimiter: ',',
-		Tag:       "csv",
+		TagKey:    "csv",
 		LineBreak: "\n",
 		w:         w,
 	}
 }
 
 func (e *Expander) SetDelimeter(delim rune) *Expander       { e.Delimiter = delim; return e }
-func (e *Expander) SetTag(tag string) *Expander             { e.Tag = tag; return e }
+func (e *Expander) SetTagKey(tagKey string) *Expander       { e.TagKey = tagKey; return e }
 func (e *Expander) SetLineBreak(lineBreak string) *Expander { e.LineBreak = lineBreak; return e }
 
 func (e *Expander) Expand(value interface{}, path ...string) error {
@@ -48,9 +48,8 @@ func (e *Expander) Expand(value interface{}, path ...string) error {
 	return e.expand(v, ps)
 }
 
-func (e *Expander) Names() []string {
-	return e.names
-}
+func (e *Expander) Tags() []Tag     { return e.tags }
+func (e *Expander) Names() []string { return e.names }
 
 func (e *Expander) expand(v reflect.Value, path [][]string) error {
 	fields, err := e.marshal(v)
@@ -101,11 +100,12 @@ func (e *Expander) expand(v reflect.Value, path [][]string) error {
 
 func (e *Expander) marshal(v reflect.Value) ([]byte, error) {
 	w := new(bytes.Buffer)
-	enc := Encoder{w: w, Delimiter: e.Delimiter, Tag: e.Tag}
+	enc := Encoder{w: w, Delimiter: e.Delimiter, TagKey: e.TagKey}
 	if err := enc.encode(v); err != nil {
 		return nil, err
 	}
 	if !e.written { // only accumulate names for the first record
+		e.tags = append(e.tags, enc.Tags()...)
 		e.names = append(e.names, enc.Names()...)
 	}
 	return w.Bytes(), nil
@@ -167,11 +167,4 @@ func getSlice(v reflect.Value, path []string) (reflect.Value, error) {
 		return reflect.Value{}, fmt.Errorf("expect slice or array type but got %v for path %v", v.Kind(), path)
 	}
 	return v, nil
-}
-
-type Types struct {
-	V1 string    `csv:"v1"`
-	V2 int       `csv:"v2"`
-	V3 float64   `csv:"v3"`
-	V4 time.Time `csv:"v4"`
 }

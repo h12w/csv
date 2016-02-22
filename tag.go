@@ -2,6 +2,7 @@ package csv
 
 import (
 	"strconv"
+	"strings"
 )
 
 // A StructTag is the tag string in a struct field.
@@ -12,13 +13,36 @@ import (
 // characters other than space (U+0020 ' '), quote (U+0022 '"'),
 // and colon (U+003A ':').  Each value is quoted using U+0022 '"'
 // characters and Go string literal syntax.
-type structTag string
+type Tag string
+type Tags []Tag
+
+func (tags *Tags) push(tag Tag) {
+	*tags = append(*tags, tag)
+}
+
+func (tags *Tags) pop() Tag {
+	top := (*tags)[len(*tags)-1]
+	*tags = (*tags)[:len(*tags)-1]
+	return top
+}
+
+func (tags Tags) top() Tag {
+	return tags[len(tags)-1]
+}
+
+func (tags Tags) join(tagKey string) string {
+	segments := make([]string, len(tags))
+	for i := range segments {
+		segments[i] = tags[i].Get(tagKey)
+	}
+	return strings.Join(segments, "")
+}
 
 // Get returns the value associated with key in the tag string.
 // If there is no such key in the tag, Get returns the empty string.
 // If the tag does not have the conventional format, the value
 // returned by Get is unspecified.
-func (tag structTag) Get(key string) string {
+func (tag Tag) Get(key string) string {
 	for tag != "" {
 		// skip leading space
 		i := 0
@@ -64,7 +88,7 @@ func (tag structTag) Get(key string) string {
 	return ""
 }
 
-func (tag structTag) Has(key string) bool {
+func (tag Tag) Has(key string) bool {
 	for tag != "" {
 		// skip leading space
 		i := 0

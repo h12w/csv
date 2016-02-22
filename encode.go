@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"reflect"
-	"strings"
 	"time"
 )
 
@@ -15,25 +14,26 @@ const (
 
 type Encoder struct {
 	Delimiter rune
-	Tag       string
+	TagKey    string
 	LineBreak string
 	written   bool
 	w         io.Writer
-	nameStack []string
+	tags      []Tag
 	names     []string
+	tagStack  Tags
 }
 
 func NewEncoder(w io.Writer) *Encoder {
 	return &Encoder{
 		Delimiter: ',',
-		Tag:       "csv",
+		TagKey:    "csv",
 		LineBreak: "\n",
 		w:         w,
 	}
 }
 
 func (enc *Encoder) SetDelimeter(delim rune) *Encoder       { enc.Delimiter = delim; return enc }
-func (enc *Encoder) SetTag(tag string) *Encoder             { enc.Tag = tag; return enc }
+func (enc *Encoder) SetTagKey(tagKey string) *Encoder       { enc.TagKey = tagKey; return enc }
 func (enc *Encoder) SetLineBreak(lineBreak string) *Encoder { enc.LineBreak = lineBreak; return enc }
 
 func (enc *Encoder) Encode(v interface{}) error {
@@ -46,9 +46,8 @@ func (enc *Encoder) Encode(v interface{}) error {
 	return nil
 }
 
-func (enc *Encoder) Names() []string {
-	return enc.names
-}
+func (enc *Encoder) Tags() []Tag     { return enc.tags }
+func (enc *Encoder) Names() []string { return enc.names }
 
 func (enc *Encoder) encode(v reflect.Value) error {
 	switch v.Kind() {
@@ -76,7 +75,8 @@ func (enc *Encoder) write(bs []byte) error {
 			return err
 		}
 	}
-	enc.names = append(enc.names, strings.Join(enc.nameStack, ""))
+	enc.tags = append(enc.tags, enc.tagStack.top())
+	enc.names = append(enc.names, enc.tagStack.join(enc.TagKey))
 	_, err := enc.w.Write(bs)
 	if err != nil {
 		return err
@@ -89,19 +89,18 @@ func (enc *Encoder) encodeStruct(v reflect.Value) error {
 	t := v.Type()
 	for i := 0; i < v.NumField(); i++ {
 		field := t.Field(i)
-		tag := structTag(field.Tag)
-		name := tag.Get(enc.Tag)
-		if !tag.Has(enc.Tag) && (field.Type.Kind() != reflect.Struct || field.Type == reflect.TypeOf(time.Time{})) {
+		tag := Tag(field.Tag)
+		if !tag.Has(enc.TagKey) && (field.Type.Kind() != reflect.Struct || field.Type == reflect.TypeOf(time.Time{})) {
 			continue
 		}
-		if tag.Get(enc.Tag) == "-" {
+		if tag.Get(enc.TagKey) == "-" {
 			continue
 		}
-		enc.nameStack = append(enc.nameStack, name)
+		enc.tagStack.push(tag)
 		if err := enc.encode(v.Field(i)); err != nil {
 			return err
 		}
-		enc.nameStack = enc.nameStack[:len(enc.nameStack)-1]
+		enc.tagStack.pop()
 	}
 	return nil
 }
