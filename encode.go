@@ -12,7 +12,7 @@ const (
 	sqlTime = "2006-01-02 15:04:05.000"
 )
 
-type Encoder struct {
+type basicEncoder struct {
 	Delimiter rune
 	TagKey    string
 	LineBreak string
@@ -23,8 +23,8 @@ type Encoder struct {
 	tagStack  Tags
 }
 
-func NewEncoder(w io.Writer) *Encoder {
-	return &Encoder{
+func NewBasicEncoder(w io.Writer) *basicEncoder {
+	return &basicEncoder{
 		Delimiter: ',',
 		TagKey:    "csv",
 		LineBreak: "\n",
@@ -32,12 +32,15 @@ func NewEncoder(w io.Writer) *Encoder {
 	}
 }
 
-func (enc *Encoder) SetDelimeter(delim rune) *Encoder       { enc.Delimiter = delim; return enc }
-func (enc *Encoder) SetTagKey(tagKey string) *Encoder       { enc.TagKey = tagKey; return enc }
-func (enc *Encoder) SetLineBreak(lineBreak string) *Encoder { enc.LineBreak = lineBreak; return enc }
+func (enc *basicEncoder) SetDelimeter(delim rune) *basicEncoder { enc.Delimiter = delim; return enc }
+func (enc *basicEncoder) SetTagKey(tagKey string) *basicEncoder { enc.TagKey = tagKey; return enc }
+func (enc *basicEncoder) SetLineBreak(lineBreak string) *basicEncoder {
+	enc.LineBreak = lineBreak
+	return enc
+}
 
-func (enc *Encoder) Encode(v interface{}) error {
-	if err := enc.encode(reflect.ValueOf(v)); err != nil {
+func (enc *basicEncoder) encodeLine(v interface{}) error {
+	if err := enc.encodeValue(reflect.ValueOf(v)); err != nil {
 		return err
 	}
 	if _, err := enc.w.Write([]byte(enc.LineBreak)); err != nil {
@@ -46,10 +49,10 @@ func (enc *Encoder) Encode(v interface{}) error {
 	return nil
 }
 
-func (enc *Encoder) Tags() []Tag     { return enc.tags }
-func (enc *Encoder) Names() []string { return enc.names }
+func (enc *basicEncoder) Tags() []Tag     { return enc.tags }
+func (enc *basicEncoder) Names() []string { return enc.names }
 
-func (enc *Encoder) encode(v reflect.Value) error {
+func (enc *basicEncoder) encodeValue(v reflect.Value) error {
 	switch v.Kind() {
 	case reflect.Struct:
 		if t, ok := v.Interface().(time.Time); ok {
@@ -60,7 +63,7 @@ func (enc *Encoder) encode(v reflect.Value) error {
 		return nil
 	case reflect.Ptr:
 		if !v.IsNil() {
-			return enc.encode(v.Elem())
+			return enc.encodeValue(v.Elem())
 		}
 	default:
 		return enc.write([]byte(fmt.Sprint(v.Interface())))
@@ -68,7 +71,7 @@ func (enc *Encoder) encode(v reflect.Value) error {
 	return nil
 }
 
-func (enc *Encoder) write(bs []byte) error {
+func (enc *basicEncoder) write(bs []byte) error {
 	if enc.written {
 		_, err := enc.w.Write([]byte(string(enc.Delimiter)))
 		if err != nil {
@@ -85,7 +88,7 @@ func (enc *Encoder) write(bs []byte) error {
 	return nil
 }
 
-func (enc *Encoder) encodeStruct(v reflect.Value) error {
+func (enc *basicEncoder) encodeStruct(v reflect.Value) error {
 	t := v.Type()
 	for i := 0; i < v.NumField(); i++ {
 		field := t.Field(i)
@@ -97,7 +100,7 @@ func (enc *Encoder) encodeStruct(v reflect.Value) error {
 			continue
 		}
 		enc.tagStack.push(tag)
-		if err := enc.encode(v.Field(i)); err != nil {
+		if err := enc.encodeValue(v.Field(i)); err != nil {
 			return err
 		}
 		enc.tagStack.pop()

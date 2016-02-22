@@ -2,43 +2,34 @@ package csv
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"reflect"
 	"strings"
 )
 
-var (
-	ErrPathEmpty = errors.New("path should not be empty")
-)
-
-type Expander struct {
-	Delimiter rune
-	TagKey    string
-	LineBreak string
-	w         io.Writer
-	tags      []Tag
-	names     []string
-	written   bool
+type Encoder struct {
+	basicEncoder
 }
 
-func NewExpander(w io.Writer) *Expander {
-	return &Expander{
-		Delimiter: ',',
-		TagKey:    "csv",
-		LineBreak: "\n",
-		w:         w,
+func NewEncoder(w io.Writer) *Encoder {
+	return &Encoder{
+		basicEncoder: basicEncoder{
+			Delimiter: ',',
+			TagKey:    "csv",
+			LineBreak: "\n",
+			w:         w,
+		},
 	}
 }
 
-func (e *Expander) SetDelimeter(delim rune) *Expander       { e.Delimiter = delim; return e }
-func (e *Expander) SetTagKey(tagKey string) *Expander       { e.TagKey = tagKey; return e }
-func (e *Expander) SetLineBreak(lineBreak string) *Expander { e.LineBreak = lineBreak; return e }
+func (e *Encoder) SetDelimeter(delim rune) *Encoder       { e.Delimiter = delim; return e }
+func (e *Encoder) SetTagKey(tagKey string) *Encoder       { e.TagKey = tagKey; return e }
+func (e *Encoder) SetLineBreak(lineBreak string) *Encoder { e.LineBreak = lineBreak; return e }
 
-func (e *Expander) Expand(value interface{}, path ...string) error {
+func (e *Encoder) Encode(value interface{}, path ...string) error {
 	if len(path) == 0 {
-		return ErrPathEmpty
+		return e.basicEncoder.encodeLine(value)
 	}
 	ps := make([][]string, len(path))
 	for i := range ps {
@@ -48,10 +39,10 @@ func (e *Expander) Expand(value interface{}, path ...string) error {
 	return e.expand(v, ps)
 }
 
-func (e *Expander) Tags() []Tag     { return e.tags }
-func (e *Expander) Names() []string { return e.names }
+func (e *Encoder) Tags() []Tag     { return e.tags }
+func (e *Encoder) Names() []string { return e.names }
 
-func (e *Expander) expand(v reflect.Value, path [][]string) error {
+func (e *Encoder) expand(v reflect.Value, path [][]string) error {
 	fields, err := e.marshal(v)
 	if err != nil {
 		return err
@@ -98,10 +89,10 @@ func (e *Expander) expand(v reflect.Value, path [][]string) error {
 	return nil
 }
 
-func (e *Expander) marshal(v reflect.Value) ([]byte, error) {
+func (e *Encoder) marshal(v reflect.Value) ([]byte, error) {
 	w := new(bytes.Buffer)
-	enc := Encoder{w: w, Delimiter: e.Delimiter, TagKey: e.TagKey}
-	if err := enc.encode(v); err != nil {
+	enc := basicEncoder{w: w, Delimiter: e.Delimiter, TagKey: e.TagKey}
+	if err := enc.encodeValue(v); err != nil {
 		return nil, err
 	}
 	if !e.written { // only accumulate names for the first record
