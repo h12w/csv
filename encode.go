@@ -24,6 +24,7 @@ type basicEncoder struct {
 }
 
 func (enc *basicEncoder) encodeLine(v interface{}) error {
+	enc.written = false
 	if err := enc.encodeValue(reflect.ValueOf(v)); err != nil {
 		return err
 	}
