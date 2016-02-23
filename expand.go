@@ -24,7 +24,7 @@ func NewEncoder(w io.Writer) *Encoder {
 	}
 }
 
-func (e *Encoder) SetDelimeter(delim rune) *Encoder       { e.delimiter = delim; return e }
+func (e *Encoder) SetDelimiter(delim rune) *Encoder       { e.delimiter = delim; return e }
 func (e *Encoder) SetTagKey(tagKey string) *Encoder       { e.tagKey = tagKey; return e }
 func (e *Encoder) SetLineBreak(lineBreak string) *Encoder { e.lineBreak = lineBreak; return e }
 func (e *Encoder) SetExpandPath(path ...string) *Encoder {
