@@ -18,8 +18,7 @@ type basicEncoder struct {
 	lineBreak string
 	written   bool
 	w         io.Writer
-	tags      []Tag
-	names     []string
+	fields    Fields
 	tagStack  Tags
 }
 
@@ -60,8 +59,9 @@ func (enc *basicEncoder) write(bs []byte) error {
 			return err
 		}
 	}
-	enc.tags = append(enc.tags, enc.tagStack.top())
-	enc.names = append(enc.names, enc.tagStack.join(enc.tagKey))
+	enc.fields = append(enc.fields, Field{
+		Name: enc.tagStack.join(enc.tagKey),
+		Tag:  enc.tagStack.top()})
 	_, err := enc.w.Write(bs)
 	if err != nil {
 		return err

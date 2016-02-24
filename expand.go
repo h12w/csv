@@ -43,8 +43,7 @@ func (e *Encoder) Encode(value interface{}) error {
 	return e.expand(v)
 }
 
-func (e *Encoder) Tags() []Tag     { return e.tags }
-func (e *Encoder) Names() []string { return e.names }
+func (e *Encoder) Fields() Fields { return e.fields }
 
 func (e *Encoder) expand(v reflect.Value) error {
 	fields, err := e.marshal(v)
@@ -100,8 +99,7 @@ func (e *Encoder) marshal(v reflect.Value) ([]byte, error) {
 		return nil, err
 	}
 	if !e.written { // only accumulate names for the first record
-		e.tags = append(e.tags, enc.tags...)
-		e.names = append(e.names, enc.names...)
+		e.fields = append(e.fields, enc.fields...)
 	}
 	return w.Bytes(), nil
 }
