@@ -135,11 +135,10 @@ type iter struct {
 }
 
 func (it *iter) next() (reflect.Value, bool) {
-	v := reflect.New(it.slice.Type().Elem()).Elem()
 	if it.i >= it.slice.Len() {
 		return reflect.Value{}, false
 	}
-	v.Set(it.slice.Index(it.i))
+	v := it.slice.Index(it.i)
 	it.i++
 	return v, it.i <= it.slice.Len()
 }
