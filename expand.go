@@ -154,7 +154,11 @@ func getSlice(v reflect.Value, path []string) (reflect.Value, error) {
 		v = v.FieldByName(name)
 	}
 	switch v.Kind() {
-	case reflect.Slice, reflect.Array:
+	case reflect.Slice:
+		if v.Len() == 0 {
+			v.Set(reflect.MakeSlice(v.Type(), 1, 1)) // alloc at least one element for empty values
+		}
+	case reflect.Array:
 	default:
 		return reflect.Value{}, fmt.Errorf("expect slice or array type but got %v for path %v", v.Kind(), path)
 	}
