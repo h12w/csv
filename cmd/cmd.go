@@ -1,4 +1,4 @@
-package mysql
+package cmd
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 	"h12.me/csv"
 )
 
-type Cmd struct {
+type MySQLCmd struct {
 	Value      interface{}
 	TagKey     string
 	ExpandPath []string
@@ -19,11 +19,11 @@ type Cmd struct {
 	Table      string
 }
 
-func (cmd Cmd) CreateDB() string {
+func (cmd MySQLCmd) CreateDB() string {
 	return fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s DEFAULT CHARACTER SET utf8;\n", cmd.DB)
 }
 
-func (cmd Cmd) CreateTable() (string, error) {
+func (cmd MySQLCmd) CreateTable() (string, error) {
 	w := new(bytes.Buffer)
 	fmt.Fprintf(w, "CREATE TABLE IF NOT EXISTS %s (\n", cmd.Table)
 	fields, err := cmd.Fields()
@@ -48,7 +48,7 @@ func (cmd Cmd) CreateTable() (string, error) {
 	return w.String(), nil
 }
 
-func (cmd Cmd) LoadData() (string, error) {
+func (cmd MySQLCmd) LoadData() (string, error) {
 	fields, err := cmd.Fields()
 	if err != nil {
 		return "", err
@@ -56,7 +56,7 @@ func (cmd Cmd) LoadData() (string, error) {
 	return fmt.Sprintf("LOAD DATA LOCAL INFILE 'Reader::%%[1]s' REPLACE INTO TABLE %%[1]s (%s);\n", strings.Join(fields.Names(), ", ")), nil
 }
 
-func (cmd Cmd) Fields() (csv.Fields, error) {
+func (cmd MySQLCmd) Fields() (csv.Fields, error) {
 	enc := csv.NewEncoder(ioutil.Discard).SetTagKey(cmd.TagKey).SetExpandPath(cmd.ExpandPath...)
 	if err := enc.Encode(cmd.Value); err != nil {
 		return nil, err
@@ -64,6 +64,6 @@ func (cmd Cmd) Fields() (csv.Fields, error) {
 	return enc.Fields(), nil
 }
 
-func (cmd Cmd) FullTableName() string {
+func (cmd MySQLCmd) FullTableName() string {
 	return cmd.DB + "." + cmd.Table
 }

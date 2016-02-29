@@ -1,10 +1,10 @@
-package mysql
+package cmd
 
 import (
 	"testing"
 )
 
-func TestCmd(t *testing.T) {
+func TestMySQLCmd(t *testing.T) {
 	type S struct {
 		ID     string `table:"id" TYPE:"VARCHAR(10)" PK:"yes"`
 		V1     int    `table:"v1" TYPE:"INT(11)"`
@@ -12,7 +12,7 @@ func TestCmd(t *testing.T) {
 			V2 float64 `table:"v2" TYPE:"FLOAT"`
 		}
 	}
-	cmd := Cmd{
+	cmd := MySQLCmd{
 		Value:  S{},
 		TagKey: "table",
 		DB:     "db1",
