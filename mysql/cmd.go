@@ -63,3 +63,7 @@ func (cmd Cmd) Fields() (csv.Fields, error) {
 	}
 	return enc.Fields(), nil
 }
+
+func (cmd Cmd) FullTableName() string {
+	return cmd.DB + "." + cmd.Table
+}
