@@ -46,6 +46,12 @@ func (enc *basicEncoder) encodeValue(v reflect.Value) error {
 		if !v.IsNil() {
 			return enc.encodeValue(v.Elem())
 		}
+	case reflect.Bool:
+		if v.Bool() {
+			return enc.write([]byte{'1'})
+		} else {
+			return enc.write([]byte{'0'})
+		}
 	default:
 		return enc.write([]byte(fmt.Sprint(v.Interface())))
 	}
