@@ -25,7 +25,7 @@ func (cmd MySQLCmd) CreateDB() string {
 
 func (cmd MySQLCmd) CreateTable() (string, error) {
 	w := new(bytes.Buffer)
-	fmt.Fprintf(w, "CREATE TABLE IF NOT EXISTS %s (\n", cmd.Table)
+	fmt.Fprintf(w, "CREATE TABLE IF NOT EXISTS %s (\n", cmd.FullTableName())
 	fields, err := cmd.Fields()
 	if err != nil {
 		return "", err
@@ -53,7 +53,7 @@ func (cmd MySQLCmd) LoadData() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("LOAD DATA LOCAL INFILE 'Reader::%%[1]s' REPLACE INTO TABLE %%[1]s (%s);\n", strings.Join(fields.Names(), ", ")), nil
+	return fmt.Sprintf("LOAD DATA LOCAL INFILE 'Reader::%[1]s' REPLACE INTO TABLE %[1]s (%s);\n", cmd.FullTableName(), strings.Join(fields.Names(), ", ")), nil
 }
 
 func (cmd MySQLCmd) Fields() (csv.Fields, error) {
