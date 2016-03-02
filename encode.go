@@ -2,6 +2,7 @@ package csv
 
 import (
 	"bytes"
+	"encoding/csv"
 	"fmt"
 	"io"
 	"reflect"
@@ -16,20 +17,29 @@ type basicEncoder struct {
 	delimiter rune
 	tagKey    string
 	lineBreak string
-	written   bool
 	w         io.Writer
 	fields    Fields
 	tagStack  Tags
 }
 
 func (enc *basicEncoder) encodeLine(v interface{}) error {
-	enc.written = false
+	enc.fields = nil
 	if err := enc.encodeValue(reflect.ValueOf(v)); err != nil {
 		return err
 	}
-	if _, err := enc.w.Write([]byte(enc.lineBreak)); err != nil {
+	return enc.encodeFields(enc.fields.Values())
+}
+
+func (enc *basicEncoder) encodeFields(values []string) error {
+	w := csv.NewWriter(enc.w)
+	w.Comma = enc.delimiter
+	if enc.lineBreak == "\r\n" {
+		w.UseCRLF = true
+	}
+	if err := w.Write(values); err != nil {
 		return err
 	}
+	w.Flush()
 	return nil
 }
 
@@ -59,20 +69,10 @@ func (enc *basicEncoder) encodeValue(v reflect.Value) error {
 }
 
 func (enc *basicEncoder) write(bs []byte) error {
-	if enc.written {
-		_, err := enc.w.Write([]byte(string(enc.delimiter)))
-		if err != nil {
-			return err
-		}
-	}
 	enc.fields = append(enc.fields, Field{
-		Name: enc.tagStack.join(enc.tagKey),
-		Tag:  enc.tagStack.top()})
-	_, err := enc.w.Write(bs)
-	if err != nil {
-		return err
-	}
-	enc.written = true
+		Name:  enc.tagStack.join(enc.tagKey),
+		Value: string(bs),
+		Tag:   enc.tagStack.top()})
 	return nil
 }
 

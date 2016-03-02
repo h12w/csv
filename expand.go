@@ -10,7 +10,8 @@ import (
 
 type Encoder struct {
 	basicEncoder
-	path [][]string
+	path    [][]string
+	written bool
 }
 
 func NewEncoder(w io.Writer) *Encoder {
@@ -56,7 +57,7 @@ func (e *Encoder) expand(v reflect.Value) error {
 	}
 	its := its{{
 		slice:  slice,
-		prefix: fields,
+		fields: fields,
 	}}
 	for {
 		it := its.top()
@@ -77,22 +78,19 @@ func (e *Encoder) expand(v reflect.Value) error {
 			its.push(&iter{
 				slice:  slice,
 				level:  it.level + 1,
-				prefix: fields,
+				fields: fields,
 			})
 			continue
 		}
-		if _, err := e.w.Write(bytes.Join(append(its.prefixes(), fields), []byte(string(e.delimiter)))); err != nil {
+		if err := e.encodeFields(append(its.fields(), fields...).Values()); err != nil {
 			return err
 		}
 		e.written = true
-		if _, err := e.w.Write([]byte(e.lineBreak)); err != nil {
-			return err
-		}
 	}
 	return nil
 }
 
-func (e *Encoder) marshal(v reflect.Value) ([]byte, error) {
+func (e *Encoder) marshal(v reflect.Value) (Fields, error) {
 	w := new(bytes.Buffer)
 	enc := basicEncoder{w: w, delimiter: e.delimiter, tagKey: e.tagKey}
 	if err := enc.encodeValue(v); err != nil {
@@ -101,7 +99,7 @@ func (e *Encoder) marshal(v reflect.Value) ([]byte, error) {
 	if !e.written { // only accumulate names for the first record
 		e.fields = append(e.fields, enc.fields...)
 	}
-	return w.Bytes(), nil
+	return enc.fields, nil
 }
 
 type its []*iter
@@ -119,19 +117,19 @@ func (s *its) pop() (res *iter) {
 	return
 }
 
-func (s *its) prefixes() [][]byte {
-	bufs := make([][]byte, len(*s))
+func (s *its) fields() Fields {
+	var fields Fields
 	for i := range *s {
-		bufs[i] = (*s)[i].prefix
+		fields = append(fields, (*s)[i].fields...)
 	}
-	return bufs
+	return fields
 }
 
 type iter struct {
 	slice  reflect.Value
 	i      int
 	level  int
-	prefix []byte
+	fields Fields
 }
 
 func (it *iter) next() (reflect.Value, bool) {

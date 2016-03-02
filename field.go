@@ -2,8 +2,9 @@ package csv
 
 type (
 	Field struct {
-		Name string
-		Tag  Tag
+		Name  string
+		Value string
+		Tag   Tag
 	}
 	Fields []Field
 )
@@ -18,4 +19,12 @@ func (a Fields) Names() []string {
 		names[i] = a[i].Name
 	}
 	return names
+}
+
+func (a Fields) Values() []string {
+	values := make([]string, len(a))
+	for i := range values {
+		values[i] = a[i].Value
+	}
+	return values
 }
