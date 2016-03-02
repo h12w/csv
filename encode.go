@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -31,6 +32,9 @@ func (enc *basicEncoder) encodeLine(v interface{}) error {
 }
 
 func (enc *basicEncoder) encodeFields(values []string) error {
+	for i := range values {
+		values[i] = escapeField(values[i])
+	}
 	w := csv.NewWriter(enc.w)
 	w.Comma = enc.delimiter
 	if enc.lineBreak == "\r\n" {
@@ -41,6 +45,11 @@ func (enc *basicEncoder) encodeFields(values []string) error {
 	}
 	w.Flush()
 	return nil
+}
+func escapeField(s string) string {
+	s = strings.Replace(s, "\t", `\t`, -1)
+	s = strings.Replace(s, "\n", `\n`, -1)
+	return s
 }
 
 func (enc *basicEncoder) encodeValue(v reflect.Value) error {
