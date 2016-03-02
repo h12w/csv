@@ -53,7 +53,11 @@ func (cmd MySQLCmd) LoadData() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("LOAD DATA LOCAL INFILE 'Reader::%[1]s' REPLACE INTO TABLE %[1]s CHARACTER SET UTF8 (%s);\n", cmd.FullTableName(), strings.Join(fields.Names(), ", ")), nil
+	return fmt.Sprintf("LOAD DATA LOCAL INFILE 'Reader::%[1]s' "+
+		"REPLACE INTO TABLE %[1]s "+
+		"CHARACTER SET UTF8 "+
+		`FIELDS OPTIONALLY ENCLOSED BY '"' `+
+		"(%s);\n", cmd.FullTableName(), strings.Join(fields.Names(), ", ")), nil
 }
 
 func (cmd MySQLCmd) Fields() (csv.Fields, error) {
