@@ -48,16 +48,16 @@ func (cmd MySQLCmd) CreateTable() (string, error) {
 	return w.String(), nil
 }
 
-func (cmd MySQLCmd) LoadData() (string, error) {
+func (cmd MySQLCmd) LoadData(readerName string) (string, error) {
 	fields, err := cmd.Fields()
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("LOAD DATA LOCAL INFILE 'Reader::%[1]s' "+
-		"REPLACE INTO TABLE %[1]s "+
+	return fmt.Sprintf("LOAD DATA LOCAL INFILE 'Reader::%s' "+
+		"REPLACE INTO TABLE %s "+
 		"CHARACTER SET UTF8 "+
 		`FIELDS OPTIONALLY ENCLOSED BY '"' `+
-		"(%s);\n", cmd.FullTableName(), strings.Join(fields.Names(), ", ")), nil
+		"(%s);\n", readerName, cmd.FullTableName(), strings.Join(fields.Names(), ", ")), nil
 }
 
 func (cmd MySQLCmd) Fields() (csv.Fields, error) {
