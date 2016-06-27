@@ -15,13 +15,11 @@ func TestMySQLCmd(t *testing.T) {
 	cmd := MySQLCmd{
 		Value:   S{},
 		TagKey:  "table",
-		DB:      "db1",
 		Engine:  "InnoDB",
-		Table:   "table",
 		Replace: true,
 	}
 	{
-		createTable, err := cmd.CreateTable()
+		createTable, err := cmd.CreateTable("db1.table")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -41,13 +39,13 @@ func TestMySQLCmd(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		expected := "LOAD DATA LOCAL INFILE 'Reader::%s' REPLACE INTO TABLE db1.table CHARACTER SET UTF8 FIELDS OPTIONALLY ENCLOSED BY '\"' (id, v1, v2);\n"
+		expected := "LOAD DATA LOCAL INFILE 'Reader::%s' REPLACE INTO TABLE %s CHARACTER SET UTF8 FIELDS OPTIONALLY ENCLOSED BY '\"' (id, v1, v2);\n"
 		if loadData != expected {
 			t.Fatalf("expect\n%s\ngot\n%s", expected, loadData)
 		}
 	}
 	{
-		createDB := cmd.CreateDB()
+		createDB := cmd.CreateDB("db1")
 		expected := "CREATE DATABASE IF NOT EXISTS db1 DEFAULT CHARACTER SET utf8;\n"
 		if createDB != expected {
 			t.Fatalf("expect\n%s\ngot\n%s", expected, createDB)

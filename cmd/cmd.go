@@ -14,19 +14,17 @@ type MySQLCmd struct {
 	Value      interface{}
 	TagKey     string
 	ExpandPath []string
-	DB         string
 	Engine     string
-	Table      string
 	Replace    bool
 }
 
-func (cmd MySQLCmd) CreateDB() string {
-	return fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s DEFAULT CHARACTER SET utf8;\n", cmd.DB)
+func (cmd MySQLCmd) CreateDB(name string) string {
+	return fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s DEFAULT CHARACTER SET utf8;\n", name)
 }
 
-func (cmd MySQLCmd) CreateTable() (string, error) {
+func (cmd MySQLCmd) CreateTable(fullTableName string) (string, error) {
 	w := new(bytes.Buffer)
-	fmt.Fprintf(w, "CREATE TABLE IF NOT EXISTS %s (\n", cmd.FullTableName())
+	fmt.Fprintf(w, "CREATE TABLE IF NOT EXISTS %s (\n", fullTableName)
 	fields, err := cmd.Fields()
 	if err != nil {
 		return "", err
@@ -61,10 +59,10 @@ func (cmd MySQLCmd) LoadDataTemplate() (string, error) {
 	}
 
 	return fmt.Sprintf("LOAD DATA LOCAL INFILE 'Reader::%%s' "+
-		"%s INTO TABLE %s "+
+		"%s INTO TABLE %%s "+
 		"CHARACTER SET UTF8 "+
 		`FIELDS OPTIONALLY ENCLOSED BY '"' `+
-		"(%s);\n", replaceOrIgnore, cmd.FullTableName(), strings.Join(fields.Names(), ", ")), nil
+		"(%s);\n", replaceOrIgnore, strings.Join(fields.Names(), ", ")), nil
 }
 
 func (cmd MySQLCmd) Fields() (csv.Fields, error) {
@@ -73,8 +71,4 @@ func (cmd MySQLCmd) Fields() (csv.Fields, error) {
 		return nil, err
 	}
 	return enc.Fields(), nil
-}
-
-func (cmd MySQLCmd) FullTableName() string {
-	return cmd.DB + "." + cmd.Table
 }
