@@ -62,9 +62,10 @@ func (enc *basicEncoder) encodeValue(v reflect.Value) error {
 	case reflect.Slice:
 		return nil
 	case reflect.Ptr:
-		if !v.IsNil() {
-			return enc.encodeValue(v.Elem())
+		if v.IsNil() {
+			v.Set(reflect.New(v.Type().Elem()))
 		}
+		return enc.encodeValue(v.Elem())
 	case reflect.Bool:
 		if v.Bool() {
 			return enc.write([]byte{'1'})
@@ -72,7 +73,10 @@ func (enc *basicEncoder) encodeValue(v reflect.Value) error {
 			return enc.write([]byte{'0'})
 		}
 	default:
-		return enc.write([]byte(fmt.Sprint(v.Interface())))
+		if v.IsValid() {
+			return enc.write([]byte(fmt.Sprint(v.Interface())))
+		}
+		return enc.write([]byte(""))
 	}
 	return nil
 }
@@ -90,7 +94,7 @@ func (enc *basicEncoder) encodeStruct(v reflect.Value) error {
 	for i := 0; i < v.NumField(); i++ {
 		field := t.Field(i)
 		tag := Tag(field.Tag)
-		if !tag.Has(enc.tagKey) && (field.Type.Kind() != reflect.Struct || field.Type == reflect.TypeOf(time.Time{})) {
+		if !tag.Has(enc.tagKey) {
 			continue
 		}
 		if tag.Get(enc.tagKey) == "-" {
