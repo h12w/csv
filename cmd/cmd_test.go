@@ -13,11 +13,12 @@ func TestMySQLCmd(t *testing.T) {
 		}
 	}
 	cmd := MySQLCmd{
-		Value:  S{},
-		TagKey: "table",
-		DB:     "db1",
-		Engine: "InnoDB",
-		Table:  "db1.table",
+		Value:   S{},
+		TagKey:  "table",
+		DB:      "db1",
+		Engine:  "InnoDB",
+		Table:   "table",
+		Replace: true,
 	}
 	{
 		createTable, err := cmd.CreateTable()
@@ -36,11 +37,11 @@ func TestMySQLCmd(t *testing.T) {
 		}
 	}
 	{
-		loadData, err := cmd.LoadData()
+		loadData, err := cmd.LoadDataTemplate()
 		if err != nil {
 			t.Fatal(err)
 		}
-		expected := "LOAD DATA LOCAL INFILE 'Reader::%[1]s' REPLACE INTO TABLE %[1]s (id, v1, v2);\n"
+		expected := "LOAD DATA LOCAL INFILE 'Reader::%s' REPLACE INTO TABLE db1.table CHARACTER SET UTF8 FIELDS OPTIONALLY ENCLOSED BY '\"' (id, v1, v2);\n"
 		if loadData != expected {
 			t.Fatalf("expect\n%s\ngot\n%s", expected, loadData)
 		}

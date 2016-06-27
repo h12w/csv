@@ -17,6 +17,7 @@ type MySQLCmd struct {
 	DB         string
 	Engine     string
 	Table      string
+	Replace    bool
 }
 
 func (cmd MySQLCmd) CreateDB() string {
@@ -48,16 +49,22 @@ func (cmd MySQLCmd) CreateTable() (string, error) {
 	return w.String(), nil
 }
 
-func (cmd MySQLCmd) LoadData(readerName string) (string, error) {
+func (cmd MySQLCmd) LoadDataTemplate() (string, error) {
 	fields, err := cmd.Fields()
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("LOAD DATA LOCAL INFILE 'Reader::%s' "+
-		"REPLACE INTO TABLE %s "+
+
+	replaceOrIgnore := "IGNORE"
+	if cmd.Replace {
+		replaceOrIgnore = "REPLACE"
+	}
+
+	return fmt.Sprintf("LOAD DATA LOCAL INFILE 'Reader::%%s' "+
+		"%s INTO TABLE %s "+
 		"CHARACTER SET UTF8 "+
 		`FIELDS OPTIONALLY ENCLOSED BY '"' `+
-		"(%s);\n", readerName, cmd.FullTableName(), strings.Join(fields.Names(), ", ")), nil
+		"(%s);\n", replaceOrIgnore, cmd.FullTableName(), strings.Join(fields.Names(), ", ")), nil
 }
 
 func (cmd MySQLCmd) Fields() (csv.Fields, error) {
