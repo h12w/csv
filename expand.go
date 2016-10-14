@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"reflect"
 	"strings"
 )
@@ -42,6 +43,24 @@ func (e *Encoder) Encode(value interface{}) error {
 	}
 	v := reflect.ValueOf(value)
 	return e.expand(v)
+}
+
+func (e *Encoder) EncodeHeader(value interface{}) error {
+	fields, err := e.getFields(value)
+	if err != nil {
+		return err
+	}
+	return e.basicEncoder.encodeFields(fields.Names())
+}
+
+func (e *Encoder) getFields(value interface{}) (Fields, error) {
+	enc := NewEncoder(ioutil.Discard)
+	enc.tagKey = e.tagKey
+	enc.path = e.path
+	if err := enc.Encode(value); err != nil {
+		return nil, err
+	}
+	return enc.Fields(), nil
 }
 
 func (e *Encoder) Fields() Fields { return e.fields }
