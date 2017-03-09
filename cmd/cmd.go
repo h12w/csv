@@ -19,7 +19,7 @@ type MySQLCmd struct {
 }
 
 func (cmd MySQLCmd) CreateDB(name string) string {
-	return fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s DEFAULT CHARACTER SET utf8;\n", name)
+	return fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s DEFAULT CHARACTER SET utf8mb4;\n", name)
 }
 
 func (cmd MySQLCmd) CreateTable(fullTableName string) (string, error) {
@@ -43,7 +43,7 @@ func (cmd MySQLCmd) CreateTable(fullTableName string) (string, error) {
 		}
 	}
 	fmt.Fprintf(w, "\tPRIMARY KEY (%s)\n", strings.Join(pks, ","))
-	fmt.Fprintf(w, ") ENGINE=%s DEFAULT CHARSET=UTF8;\n", cmd.Engine)
+	fmt.Fprintf(w, ") ENGINE=%s DEFAULT CHARSET=utf8mb4;\n", cmd.Engine)
 	return w.String(), nil
 }
 
@@ -60,7 +60,7 @@ func (cmd MySQLCmd) LoadDataTemplate() (string, error) {
 
 	return fmt.Sprintf("LOAD DATA LOCAL INFILE 'Reader::%%s' "+
 		"%s INTO TABLE %%s "+
-		"CHARACTER SET UTF8 "+
+		"CHARACTER SET utf8mb4 "+
 		`FIELDS OPTIONALLY ENCLOSED BY '"' `+
 		"(%s);\n", replaceOrIgnore, strings.Join(fields.Names(), ", ")), nil
 }
