@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"h12.me/csv"
+	"h12.io/csv"
 )
 
 type MySQLCmd struct {

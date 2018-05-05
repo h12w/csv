@@ -1,4 +1,4 @@
-h12.me/csv: CSV <=> Go Struct
+h12.io/csv: CSV <=> Go Struct
 =============================
 
 Encoding and decoding between CSV and Go struct:
